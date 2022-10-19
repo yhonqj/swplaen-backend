@@ -16,7 +16,7 @@ app.post('/add', AlmacenController.add);
 app.put('/update', AlmacenController.update);
 app.delete('/remove', AlmacenController.remove);
 app.patch('/addProducto', AlmacenController.addProducto);
-app.patch('/updateProducto', AlmacenController.updateProducto);
+app.patch('/updateProducto', [ check('stockMinimo', 'El stock mínimo es obligatorio').notEmpty().isInt({ min:1, max: 2000}).withMessage('El stock mínimo debe ser un entero mayor a cero')], valid.validCampos, AlmacenController.updateProducto);
 app.patch('/removeProducto', AlmacenController.removeProducto);
 
 export default app;

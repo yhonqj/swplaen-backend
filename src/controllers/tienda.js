@@ -158,6 +158,27 @@ let getAll = async (req, res, next) => {
 }
 
 /**
+  * Lista las tiendas con paginado.
+  *
+  * @param {number} limit Límite de la paginación.
+  * @param {number} page Página.
+  * @return Respuesta en formato JSON.
+**/
+let getAllPaginate = async (req, res, next) => {
+    const { limit, page } = req.query;
+    try {
+        const total = await Tienda.find({ status: true })
+        const data = await Tienda.find({ status: true }).skip((page - 1) * limit).limit(limit)
+        res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+    } catch (e) {
+        console.log(e)
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
+/**
   * Obtiene una tienda por id.
   *
   * @param {string} id Id de la tienda.
@@ -166,9 +187,87 @@ let getAll = async (req, res, next) => {
 let getById = async (req, res, next) => {
     let id = req.query.id;
     try {
-        const data = await Tienda.findOne({ _id: id });
+        const data = await Tienda.findOne({ _id: id })
         res.status(200).json(data);
     } catch (e) {
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
+let getProductosById = async (req, res, next) => {
+    let id = req.query.id;
+    try {
+        const data = await Tienda.aggregate([
+            {
+              '$match': {
+                '_id': new ObjectId(id.toString()), 
+                'status': true
+              }
+            }, {
+              '$unwind': '$productos'
+            }, {
+              '$project': {
+                'productos': '$productos'
+              }
+            }, {
+              '$lookup': {
+                'from': 'producto', 
+                'localField': 'productos.producto', 
+                'foreignField': '_id', 
+                'as': 'productos.producto'
+              }
+            }, {
+              '$project': {
+                'stock': '$productos.stock', 
+                'precio': '$productos.precio', 
+                'descuento': '$productos.descuento', 
+                'disponible': '$productos.disponible', 
+                'idProducto': {
+                  '$first': '$productos.producto._id'
+                }, 
+                'nombre': {
+                  '$first': '$productos.producto.nombre'
+                }, 
+                'descripcion': {
+                  '$first': '$productos.producto.descripcion'
+                }, 
+                'foto': {
+                  '$first': '$productos.producto.foto'
+                }, 
+                'categoriaProducto': {
+                  '$first': '$productos.producto.categoriaProducto'
+                }
+              }
+            }, {
+              '$lookup': {
+                'from': 'categoriaProducto', 
+                'localField': 'categoriaProducto', 
+                'foreignField': '_id', 
+                'as': 'categoriaProducto'
+              }
+            }, {
+              '$project': {
+                'idProducto': '$idProducto', 
+                'stock': '$stock', 
+                'precio': '$precio', 
+                'descuento': '$descuento', 
+                'disponible': '$disponible', 
+                'nombre': '$nombre', 
+                'descripcion': '$descripcion', 
+                'foto': '$foto', 
+                'categoriaProducto': {
+                  '$first': '$categoriaProducto.nombre'
+                }, 
+                'idCategoriaProducto': {
+                  '$first': '$categoriaProducto._id'
+                }
+              }
+            }
+          ])
+    } catch (e){
+        console.log(e)
         res.status(500).send({
             message: "Error en el proceso"
         })
@@ -221,7 +320,9 @@ let remove = async (req, res, next) => {
 export {
     add,
     getAll,
+    getAllPaginate,
     getById,
+    getProductosById,
     update,
     remove,
     addProducto,
