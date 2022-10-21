@@ -1,6 +1,6 @@
 import Tienda from '../models/tienda'
 import Almacen from '../models/almacen'
-
+import { Types } from 'mongoose'
 /**
   * Registra una tienda.
   *
@@ -202,7 +202,7 @@ let getProductosById = async (req, res, next) => {
         const data = await Tienda.aggregate([
             {
               '$match': {
-                '_id': new ObjectId(id.toString()), 
+                '_id': new Types.ObjectId(id), 
                 'status': true
               }
             }, {
@@ -265,7 +265,100 @@ let getProductosById = async (req, res, next) => {
                 }
               }
             }
-          ])
+          ]);
+
+          return res.status(200).json({data});
+    } catch (e){
+        console.log(e)
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
+let getProductosByIdPaginate = async (req, res, next) => {
+    let { id, limit, page } = req.query;
+    try {
+        const tienda = await Tienda.findOne({_id: id, status: true});
+        let total = 0;
+        for (let i = 0; i < tienda.productos.length; i++){
+            if (tienda.productos[i].status){
+                total++;
+            }
+        }
+        const data = await Tienda.aggregate([
+            {
+              '$match': {
+                '_id': new Types.ObjectId(id), 
+                'status': true
+              }
+            }, {
+              '$unwind': '$productos'
+            }, {
+              '$project': {
+                'productos': '$productos'
+              }
+            }, {
+              '$lookup': {
+                'from': 'producto', 
+                'localField': 'productos.producto', 
+                'foreignField': '_id', 
+                'as': 'productos.producto'
+              }
+            }, {
+              '$project': {
+                'stock': '$productos.stock', 
+                'precio': '$productos.precio', 
+                'descuento': '$productos.descuento', 
+                'disponible': '$productos.disponible', 
+                'idProducto': {
+                  '$first': '$productos.producto._id'
+                }, 
+                'nombre': {
+                  '$first': '$productos.producto.nombre'
+                }, 
+                'descripcion': {
+                  '$first': '$productos.producto.descripcion'
+                }, 
+                'foto': {
+                  '$first': '$productos.producto.foto'
+                }, 
+                'categoriaProducto': {
+                  '$first': '$productos.producto.categoriaProducto'
+                }
+              }
+            }, {
+              '$lookup': {
+                'from': 'categoriaProducto', 
+                'localField': 'categoriaProducto', 
+                'foreignField': '_id', 
+                'as': 'categoriaProducto'
+              }
+            }, {
+              '$project': {
+                'idProducto': '$idProducto', 
+                'stock': '$stock', 
+                'precio': '$precio', 
+                'descuento': '$descuento', 
+                'disponible': '$disponible', 
+                'nombre': '$nombre', 
+                'descripcion': '$descripcion', 
+                'foto': '$foto', 
+                'categoriaProducto': {
+                  '$first': '$categoriaProducto.nombre'
+                }, 
+                'idCategoriaProducto': {
+                  '$first': '$categoriaProducto._id'
+                }
+              }
+            }, {
+                '$limit': Number(limit)
+            }, {
+                '$skip': ((page - 1) * limit)
+            }
+          ]);
+
+          return res.status(200).json({results: data, total, totalPages: Math.ceil(total / limit) });
     } catch (e){
         console.log(e)
         res.status(500).send({
@@ -323,6 +416,7 @@ export {
     getAllPaginate,
     getById,
     getProductosById,
+    getProductosByIdPaginate,
     update,
     remove,
     addProducto,

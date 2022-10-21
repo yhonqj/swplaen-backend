@@ -1,6 +1,7 @@
 import Almacen from '../models/almacen'
 import mail from '../services/mail';
 
+
 let add = async (req, res, next) => {
     const { codigo, descripcion, ubicacion } = req.body;
     try {
