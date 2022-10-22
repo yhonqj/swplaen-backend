@@ -1,6 +1,7 @@
 import Tienda from '../models/tienda'
 import Almacen from '../models/almacen'
 import { Types } from 'mongoose'
+import Producto from '../models/producto';
 /**
   * Registra una tienda.
   *
@@ -41,6 +42,7 @@ let addProducto = async(req, res, next) => {
     try {
         const tienda = await Tienda.findOne({ _id: idTienda, status: true });
         const almacen = await Almacen.findOne({ _id: idAlmacen, status: true });
+        const producto = await Producto.findOne({ _id: idProducto, status: true });
         if (!tienda){
             return res.status(404).send({
                 message: 'No se encontró la tienda'
@@ -51,6 +53,11 @@ let addProducto = async(req, res, next) => {
                 message: 'No se encontró el almacén'
             })
         }
+        if (!producto){
+          return res.status(404).send({
+              message: 'No se encontró el producto'
+          })
+      }
         const movimientos = { cantidad, detalle, fecha };
         for (let i = 0; i < almacen.productos.length; i++) {
             if (almacen.productos[i].producto.toString() === idProducto && almacen.productos[i].status) {
@@ -65,6 +72,7 @@ let addProducto = async(req, res, next) => {
                 }
                 almacen.productos[i].movimientos.push(movimientos);
                 await Almacen.findByIdAndUpdate({ _id: idAlmacen }, { productos: almacen.productos });
+                break;
             }
             else if (almacen.productos[i].producto.toString() !== idProducto && almacen.productos[i].status && (i === almacen.productos.length - 1)) {
                 return res.status(404).send({
@@ -267,7 +275,7 @@ let getProductosById = async (req, res, next) => {
             }
           ]);
 
-          return res.status(200).json({data});
+          return res.status(200).json(data);
     } catch (e){
         console.log(e)
         res.status(500).send({

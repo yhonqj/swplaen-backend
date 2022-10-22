@@ -1,5 +1,6 @@
 import Almacen from '../models/almacen'
 import mail from '../services/mail';
+import { Types } from 'mongoose'
 
 
 let add = async (req, res, next) => {
@@ -151,6 +152,169 @@ let getById = async (req, res, next) => {
     }
 }
 
+let getProductosById = async (req, res, next) => {
+    let id = req.query.id;
+    try {
+        const data = await Almacen.aggregate([
+            {
+              '$match': {
+                '_id': new Types.ObjectId(id), 
+                'status': true
+              }
+            }, {
+              '$unwind': '$productos'
+            }, {
+              '$project': {
+                'productos': '$productos'
+              }
+            }, {
+              '$lookup': {
+                'from': 'producto', 
+                'localField': 'productos.producto', 
+                'foreignField': '_id', 
+                'as': 'productos.producto'
+              }
+            }, {
+              '$project': {
+                'stock': '$productos.stock', 
+                'stockMinimo': '$productos.stockMinimo', 
+                'idProducto': {
+                  '$first': '$productos.producto._id'
+                }, 
+                'nombre': {
+                  '$first': '$productos.producto.nombre'
+                }, 
+                'descripcion': {
+                  '$first': '$productos.producto.descripcion'
+                }, 
+                'foto': {
+                  '$first': '$productos.producto.foto'
+                }, 
+                'categoriaProducto': {
+                  '$first': '$productos.producto.categoriaProducto'
+                }
+              }
+            }, {
+              '$lookup': {
+                'from': 'categoriaProducto', 
+                'localField': 'categoriaProducto', 
+                'foreignField': '_id', 
+                'as': 'categoriaProducto'
+              }
+            }, {
+              '$project': {
+                'idProducto': '$idProducto', 
+                'stock': '$stock', 
+                'stockMinimo': '$stockMinimo', 
+                'nombre': '$nombre', 
+                'descripcion': '$descripcion', 
+                'foto': '$foto', 
+                'categoriaProducto': {
+                  '$first': '$categoriaProducto.nombre'
+                }, 
+                'idCategoriaProducto': {
+                  '$first': '$categoriaProducto._id'
+                }
+              }
+            }
+          ]);
+
+          return res.status(200).json(data);
+    } catch (e){
+        console.log(e)
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
+let getProductosByIdPaginate = async (req, res, next) => {
+    let { id, limit, page } = req.query;
+    try {
+        const almacen = await Almacen.findOne({_id: id, status: true});
+        let total = 0;
+        for (let i = 0; i < almacen.productos.length; i++){
+            if (almacen.productos[i].status){
+                total++;
+            }
+        }
+        const data = await Almacen.aggregate([
+            {
+              '$match': {
+                '_id': new Types.ObjectId(id), 
+                'status': true
+              }
+            }, {
+              '$unwind': '$productos'
+            }, {
+              '$project': {
+                'productos': '$productos'
+              }
+            }, {
+              '$lookup': {
+                'from': 'producto', 
+                'localField': 'productos.producto', 
+                'foreignField': '_id', 
+                'as': 'productos.producto'
+              }
+            }, {
+              '$project': {
+                'stock': '$productos.stock', 
+                'stockMinimo': '$productos.stockMinimo', 
+                'idProducto': {
+                  '$first': '$productos.producto._id'
+                }, 
+                'nombre': {
+                  '$first': '$productos.producto.nombre'
+                }, 
+                'descripcion': {
+                  '$first': '$productos.producto.descripcion'
+                }, 
+                'foto': {
+                  '$first': '$productos.producto.foto'
+                }, 
+                'categoriaProducto': {
+                  '$first': '$productos.producto.categoriaProducto'
+                }
+              }
+            }, {
+              '$lookup': {
+                'from': 'categoriaProducto', 
+                'localField': 'categoriaProducto', 
+                'foreignField': '_id', 
+                'as': 'categoriaProducto'
+              }
+            }, {
+              '$project': {
+                'idProducto': '$idProducto', 
+                'stock': '$stock', 
+                'stockMinimo': '$stockMinimo', 
+                'nombre': '$nombre', 
+                'descripcion': '$descripcion', 
+                'foto': '$foto', 
+                'categoriaProducto': {
+                  '$first': '$categoriaProducto.nombre'
+                }, 
+                'idCategoriaProducto': {
+                  '$first': '$categoriaProducto._id'
+                }
+              }
+            }, {
+                '$limit': Number(limit)
+            }, {
+                '$skip': ((page - 1) * limit)
+            }
+          ]);
+
+          return res.status(200).json({results: data, total, totalPages: Math.ceil(total / limit) });
+    } catch (e){
+        console.log(e)
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
 let update = async (req, res, next) => {
     const id = req.body._id;
     const { codigo, descripcion, ubicacion } = req.body;
@@ -188,6 +352,8 @@ export default {
     getAll,
     getAllPaginate,
     getById,
+    getProductosById,
+    getProductosByIdPaginate,
     update,
     remove,
     addProducto,

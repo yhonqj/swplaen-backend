@@ -6,6 +6,8 @@ import valid from '../middlewares/validation'
 const app = routerx();
 app.get('/getAll', AlmacenController.getAll);
 app.get('/getProductoById', AlmacenController.getProductoById);
+app.get('/getProductosById', AlmacenController.getProductosById);
+app.get('/getProductosByIdPaginate', AlmacenController.getProductosByIdPaginate);
 app.get('/getAllPaginate', [
     check('limit', 'El límite es obligatorio').not().isEmpty(),
     check('page', 'La página es obligatoria').not().isEmpty(),
