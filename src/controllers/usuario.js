@@ -24,7 +24,7 @@ let addColaborador = async (req, res, next) => {
         })
         await Colaborador.create({
             dni,
-            idUsuario: data._id
+            usuario: data._id
         })
         return res.status(200).json(data);
     } catch (e) {
@@ -94,7 +94,7 @@ let loginColaborador = async (req, res, next) => {
     try {
         let user = await Usuario.findOne({ correo, status: true });
         if (user) {
-            let colaborador = await Colaborador.findOne({ idUsuario: user._id, status: true });
+            let colaborador = await Colaborador.findOne({ usuario: user._id, status: true });
             if (colaborador) {
                 let match = await helpers.matchPassword(password, user.password);
                 if (match) {

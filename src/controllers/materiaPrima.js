@@ -1,33 +1,32 @@
-import Almacen from '../models/almacen';
-import Tienda from '../models/tienda';
-import Producto from '../models/producto'
+import AlmacenMp from '../models/almacenMp';
+import MateriaPrima from '../models/materiaPrima'
 
 let add = async (req, res, next) => {
-    const { nombre, descripcion, foto, categoriaProducto } = req.body;
+    const { nombre, descripcion, foto, categoriaMateriaPrima } = req.body;
     try {
-        const product = await Producto.findOne({ nombre, status: true });
-        if (product) {
-            if (product.nombre === nombre) {
+        const materiaPrima = await MateriaPrima.findOne({ nombre, status: true });
+        if (materiaPrima) {
+            if (materiaPrima.nombre === nombre) {
                 res.status(500).send({
                     message: "Ya existe un producto con ese nombre"
                 })
             }
             else {
-                const data = await Producto.create({
+                const data = await MateriaPrima.create({
                     nombre,
                     descripcion,
                     foto,
-                    categoriaProducto,
+                    categoriaMateriaPrima,
                 })
                 res.status(200).json(data);
             }
         }
         else {
-            const data = await Producto.create({
+            const data = await MateriaPrima.create({
                 nombre,
                 descripcion,
                 foto,
-                categoriaProducto
+                categoriaMateriaPrima
             })
             res.status(200).json(data);
         }
@@ -41,7 +40,7 @@ let add = async (req, res, next) => {
 
 let getAll = async (req, res, next) => {
     try {
-        const data = await Producto.find({ status: true });
+        const data = await MateriaPrima.find({ status: true });
         res.status(200).json(data);
     } catch (e) {
         res.status(500).send({
@@ -53,19 +52,19 @@ let getAll = async (req, res, next) => {
 let getAllPaginate = async (req, res, next) => {
     const { limit, page } = req.query;
     try {
-        const total = await Producto.find({ status: true });
-        let data = await Producto.find({ status: true }).skip((page - 1) * limit).limit(limit);
+        const total = await MateriaPrima.find({ status: true });
+        let data = await MateriaPrima.find({ status: true }).skip((page - 1) * limit).limit(limit);
         for (let i = 0; i< data.length; i++) {
             let stock = 0;
             data[i] = data[i].toObject();
-            const productoEnAlmacen = await Almacen.aggregate([
+            const productoEnAlmacen = await AlmacenMp.aggregate([
                 {
                     '$unwind': {
-                        'path': '$productos'
+                        'path': '$materiasPrimas'
                     }
                 }, {
                     '$match': {
-                        'productos.producto': data[i]._id,
+                        'materiasPrimas.materiaPrima': data[i]._id,
                         'status': true
                     }
                 }
@@ -74,22 +73,7 @@ let getAllPaginate = async (req, res, next) => {
             productoEnAlmacen.forEach((item) => {
                 stock += item.productos.stock;
             })
-            const productoEnTienda = await Tienda.aggregate([
-                {
-                    '$unwind': {
-                        'path': '$productos'
-                    }
-                }, {
-                    '$match': {
-                        'productos.producto': data[i]._id,
-                        'status': true
-                    }
-                }
-            ]);
             
-            productoEnTienda.forEach((item) => {
-                stock += item.productos.stock;
-            })
             data[i].stock = stock;
         };
 
@@ -104,7 +88,7 @@ let getAllPaginate = async (req, res, next) => {
 let getById = async (req, res, next) => {
     let id = req.query.id;
     try {
-        const data = await Producto.findOne({ _id: id });
+        const data = await MateriaPrima.findOne({ _id: id });
         res.status(200).json(data);
     } catch (e) {
         res.status(500).send({
@@ -115,9 +99,9 @@ let getById = async (req, res, next) => {
 
 let update = async (req, res, next) => {
     const id = req.body._id;
-    const { nombre, descripcion, foto, categoriaProducto } = req.body;
+    const { nombre, descripcion, foto, categoriaMateriaPrima } = req.body;
     try {
-        const product = await Producto.findOne({ nombre, status: true });
+        const product = await MateriaPrima.findOne({ nombre, status: true });
         if (product) {
             if (product.nombre === nombre) {
                 res.status(500).send({
@@ -125,21 +109,21 @@ let update = async (req, res, next) => {
                 })
             }
             else {
-                const data = await Producto.findByIdAndUpdate({ _id: id }, {
+                const data = await MateriaPrima.findByIdAndUpdate({ _id: id }, {
                     nombre,
                     descripcion,
                     foto,
-                    categoriaProducto
+                    categoriaMateriaPrima
                 })
                 res.status(200).json(data);
             }
         }
         else {
-            const data = await Producto.findByIdAndUpdate({ _id: id }, {
+            const data = await MateriaPrima.findByIdAndUpdate({ _id: id }, {
                 nombre,
                 descripcion,
                 foto,
-                categoriaProducto
+                categoriaMateriaPrima
             })
             res.status(200).json(data);
         }
@@ -153,7 +137,7 @@ let update = async (req, res, next) => {
 let remove = async (req, res, next) => {
     const id = req.body._id;
     try {
-        const data = await Producto.findByIdAndUpdate({ _id: id }, {
+        const data = await MateriaPrima.findByIdAndUpdate({ _id: id }, {
             status: false
         })
         res.status(200).json(data);

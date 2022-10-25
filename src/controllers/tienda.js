@@ -216,6 +216,10 @@ let getProductosById = async (req, res, next) => {
             }, {
               '$unwind': '$productos'
             }, {
+              '$match': {
+                'productos.status': true
+              }
+            }, {
               '$project': {
                 'productos': '$productos'
               }
@@ -302,6 +306,10 @@ let getProductosByIdPaginate = async (req, res, next) => {
               }
             }, {
               '$unwind': '$productos'
+            }, {
+              '$match': {
+                'productos.status': true
+              }
             }, {
               '$project': {
                 'productos': '$productos'

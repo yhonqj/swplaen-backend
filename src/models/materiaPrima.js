@@ -4,7 +4,7 @@ const MateriaPrimaSchema = new Schema({
     nombre: { type: String, required: true },
     descripcion: { type: String, required: true },
     foto: { type: String, required: true },
-    idCategoriaMateriaPrima: { type: Schema.Types.ObjectId, ref: "categoriaMateriaPrima" },
+    categoriaMateriaPrima: { type: Schema.Types.ObjectId, ref: "categoriaMateriaPrima" },
     creadoPor: { type: Schema.Types.ObjectId, ref: "usuario" },
     fechaCreacion: { type: Date, default: Date.now },
     modificadoPor: { type: Schema.Types.ObjectId, ref: "usuario" },
