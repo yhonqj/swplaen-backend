@@ -35,15 +35,23 @@ const estadoCotizacion = [
 const estadoOrden = [
     {
         id: 1,
-        nombre: 'Pendiente'
+        nombre: 'En revisión'
     },
     {
         id: 2,
-        nombre: 'Completada'
+        nombre: 'Rechazada'
     },
     {
         id: 3,
-        nombre: 'Cancelada'
+        nombre: 'Pendiente'
+    },
+    {
+        id: 4,
+        nombre: 'Completada'
+    },
+    {
+        id: 5,
+        nombre: 'Reprogramada'
     }
 ]
 
