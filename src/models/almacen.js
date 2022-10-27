@@ -22,6 +22,7 @@ const AlmacenSchema = new Schema({
     codigo: { type: String, maxlength: 15, required: true },
     descripcion: { type: String, maxlength: 300, required: false },
     ubicacion: { type: String, maxlength: 300, required: true },
+    capacidad: { type: Number, required: true },
     productos: [productosSubSchema],
     creadoPor: { type: Schema.Types.ObjectId, ref: "usuario" },
     fechaCreacion: { type: Date, default: Date.now },
