@@ -19,45 +19,6 @@ let add = async (req, res, next) => {
     }
 }
 
-let addMateriaPrima = async (req, res, next) => {
-    const { idAlmacenMp, stock, stockMinimo, idMateriaPrima, detalle, fecha } = req.body;
-    try {
-        const almacen = await AlmacenMp.findOne({ _id: idAlmacenMp, status: true });
-        if (!almacen){
-            return res.status(404).send({
-                message: 'No se encontró el almacén'
-            })
-        }
-        const movimientos = { cantidad: stock, detalle, fecha };
-        if (almacen.materiasPrimas.length !== 0) {
-            for (let i = 0; i < almacen.materiasPrimas.length; i++) {
-                if (almacen.materiasPrimas[i].materiaPrima.toString() === idMateriaPrima && almacen.materiasPrimas[i].status) {
-                    almacen.materiasPrimas[i].stock += stock;
-                    almacen.materiasPrimas[i].movimientos.push(movimientos);
-                    const data = await AlmacenMp.findByIdAndUpdate({ _id: idAlmacenMp }, { materiasPrimas: almacen.materiasPrimas });
-                    return res.status(200).json(data);
-                }
-                else if (i === almacen.materiasPrimas.length - 1) {
-                    almacen.materiasPrimas.push({ stock, stockMinimo, materiaPrima: idMateriaPrima, movimientos: [movimientos] })
-                    const data = await AlmacenMp.findByIdAndUpdate({ _id: idAlmacenMp }, { materiasPrimas: almacen.materiasPrimas });
-                    return res.status(200).json(data);
-                }
-            }
-        }
-        else {
-            almacen.materiasPrimas.push({ stock, stockMinimo, materiaPrima: idMateriaPrima, movimientos: [movimientos] })
-            const data = await AlmacenMp.findByIdAndUpdate({ _id: idAlmacenMp }, { materiasPrimas: almacen.materiasPrimas });
-            return res.status(200).json(data);
-        }
-
-    } catch (e) {
-        console.log(e)
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
-}
-
 let getAll = async (req, res, next) => {
     try {
         const data = await AlmacenMp.find({ status: true });
@@ -128,7 +89,6 @@ let remove = async (req, res, next) => {
 
 export default {
     add,
-    addMateriaPrima,
     getAll,
     getAllPaginate,
     getById,

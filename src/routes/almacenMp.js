@@ -14,6 +14,5 @@ app.get('/getById', AlmacenMpController.getById);
 app.post('/add', AlmacenMpController.add);
 app.put('/update', AlmacenMpController.update);
 app.delete('/remove', AlmacenMpController.remove);
-app.patch('/addMateriaPrima', AlmacenMpController.addMateriaPrima);
 
 export default app;
