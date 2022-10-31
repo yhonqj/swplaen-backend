@@ -13,6 +13,7 @@ let add = async (req, res, next) => {
         })
         return res.status(200).json(data);
     } catch (e) {
+        console.log(e)
         res.status(500).send({
             message: "Error en el proceso"
         })
@@ -70,6 +71,12 @@ let rechazar = async (req, res, next) => {
 let aceptar = async (req, res, next) => {
     const { id, fechaEntrega } = req.body
     try {
+        const orden = await Orden.findOne({ _id: id, status: true });
+        // if (orden.estadoOrden === 3) {
+        //     return res.status(500).send({
+        //         message: "Esta orden ya ha sido aceptada"
+        //     })
+        // }
         const almacenes = await AlmacenMp.aggregate([
             {
                 '$match': {
@@ -93,11 +100,11 @@ let aceptar = async (req, res, next) => {
                 }
             }
         ]);
-        const orden = await Orden.findOne({ _id: id, status: true });
+        let j = 0;
         let error = false;
         for (let i = 0; i < almacenes.length; i++) {
             let total = almacenes[i].total;
-            let ordenes = await Orden.aggregate([
+            let ordenes = (await Orden.aggregate([
                 {
                     '$match': {
                         'estadoOrden': 3,
@@ -117,41 +124,43 @@ let aceptar = async (req, res, next) => {
                         }
                     }
                 }
-            ])
-            console.log(ordenes)
+            ]));
+            
             if (ordenes.length !== 0) {
                 total += ordenes[0].total;
             }
-
-            for (let j = 0; j < orden.materiasPrimas.length; j++) {
-                total += orden.materiasPrimas[j].cantidad;
-                if (total <= almacenes[i].capacidad) {
-                    orden.materiasPrimas[j].almacen = almacenes[i]._id
-                    // await agregarMateriaPrimaAlmacen(almacenes[i], orden.materiasPrimas[j].materiaPrima)
-                }
-                else if (i === almacenes.length - 1) {
-                    error = true;
-                    break;
-                } else {
-                    total -= orden.materiasPrimas[j].cantidad;
-                    if (ordenes.length !== 0) {
-                        total -= ordenes[0].total;
+            if (j < orden.materiasPrimas.length){
+                for (let k = j; k < orden.materiasPrimas.length; k++){
+                    total += orden.materiasPrimas[j].cantidad;
+                    if (total <= almacenes[i].capacidad) {
+                        orden.materiasPrimas[j].almacen = almacenes[i]._id;
+                        j++;
+                    }
+                    else if (i === almacenes.length - 1) {
+                        error = true;
+                        break;
+                    } else {
+                        break;
                     }
                 }
             }
+
+            if (error) {
+                return res.status(500).send({
+                    message: "Los almacenes se quedaron sin capacidad"
+                })
+            }
+            if (j === orden.materiasPrimas.length){
+                const fecha = new Date(fechaEntrega)
+                const data = await Orden.findByIdAndUpdate({ _id: id }, { estadoOrden: 3, materiasPrimas: orden.materiasPrimas, fechaEntrega: fecha });
+                return res.status(200).json(data);
+            }
         }
 
-        if (error) {
-            return res.status(500).send({
-                message: "Los almacenes se quedaron sin capacidad"
-            })
-        } else {
-            const fecha = new Date(fechaEntrega)
-            const data = await Orden.findByIdAndUpdate({ _id: id }, { estadoOrden: 3, materiasPrimas: orden.materiasPrimas, fechaEntrega: fecha });
-            return res.status(200).json(data);
-        }
+            
 
     } catch (e) {
+        console.log(e)
         res.status(500).send({
             message: "Error en el proceso"
         })
@@ -182,7 +191,7 @@ let completar = async (req, res, next) => {
             }
             await AlmacenMp.findByIdAndUpdate({ _id: almacen._id }, { materiasPrimas: almacen.materiasPrimas });
         }
-        const data = await Orden.findByIdAndUpdate({_id: id}, {estadoOrden: 4, fechaEntrega: Date.now});
+        const data = await Orden.findByIdAndUpdate({_id: id}, {estadoOrden: 4});
         return res.status(200).json(data);
     } catch (e) {
         console.log(e)
