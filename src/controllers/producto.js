@@ -93,7 +93,7 @@ let getAllPaginate = async (req, res, next) => {
             data[i].stock = stock;
         };
 
-        res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+        return res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
     } catch (e) {
         res.status(500).send({
             message: "Error en el proceso"
@@ -151,7 +151,7 @@ let update = async (req, res, next) => {
 }
 
 let remove = async (req, res, next) => {
-    const id = req.body._id;
+    const id = req.body.id;
     try {
         const data = await Producto.findByIdAndUpdate({ _id: id }, {
             status: false

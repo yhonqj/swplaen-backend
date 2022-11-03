@@ -57,7 +57,7 @@ let getAllPaginate = async (req, res, next) => {
         for (let i = 0; i< data.length; i++) {
             let stock = 0;
             data[i] = data[i].toObject();
-            const productoEnAlmacen = await AlmacenMp.aggregate([
+            const materiaPrimaEnAlmacen = await AlmacenMp.aggregate([
                 {
                     '$unwind': {
                         'path': '$materiasPrimas'
@@ -70,15 +70,16 @@ let getAllPaginate = async (req, res, next) => {
                 }
             ]);
             
-            productoEnAlmacen.forEach((item) => {
-                stock += item.productos.stock;
+            materiaPrimaEnAlmacen.forEach((item) => {
+                stock += item.materiasPrimas.stock;
             })
             
             data[i].stock = stock;
         };
 
-        res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+        return res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
     } catch (e) {
+        console.log(e)
         res.status(500).send({
             message: "Error en el proceso"
         })
