@@ -12,5 +12,7 @@ app.get('/getAllPaginate', ProveedorController.getAllPaginate);
 app.get('/getMateriasPrimasById', ProveedorController.getMateriasPrimasById);
 app.get('/getMateriasPrimasByIdPaginate', ProveedorController.getMateriasPrimasByIdPaginate);
 app.get('/getById', ProveedorController.getById);
+app.put('/update', ProveedorController.update);
+app.delete('/remove', ProveedorController.remove);
 
 export default app;

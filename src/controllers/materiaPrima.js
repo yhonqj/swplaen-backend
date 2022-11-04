@@ -8,7 +8,7 @@ let add = async (req, res, next) => {
         if (materiaPrima) {
             if (materiaPrima.nombre === nombre) {
                 res.status(500).send({
-                    message: "Ya existe un producto con ese nombre"
+                    message: "Ya existe una materia prima con ese nombre"
                 })
             }
             else {
@@ -136,7 +136,7 @@ let update = async (req, res, next) => {
 }
 
 let remove = async (req, res, next) => {
-    const id = req.body._id;
+    const id = req.body.id;
     try {
         const data = await MateriaPrima.findByIdAndUpdate({ _id: id }, {
             status: false
