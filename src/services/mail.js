@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer'
+import * as dotenv from 'dotenv'
+dotenv.config()
 
 let sendEmail = async () => {
     // Generate test SMTP service account from ethereal.email
@@ -14,8 +16,8 @@ let sendEmail = async () => {
                 ciphers:'SSLv3'
              },
             auth: {
-                user: "ailed.riveraperales@outlook.com",
-                pass: "964301173,outlook"
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASSWORD
             }
         });
 

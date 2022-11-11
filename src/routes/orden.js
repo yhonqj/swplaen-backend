@@ -8,6 +8,7 @@ const app = routerx();
 app.post('/add', OrdenController.add);
 app.get('/getAll', OrdenController.getAll);
 app.get('/getAllPaginate', OrdenController.getAllPaginate);
+app.get('/getMateriasPrimasByIdPaginate', OrdenController.getMateriasPrimasByIdPaginate);
 app.get('/getById', OrdenController.getById);
 app.patch('/aceptar', OrdenController.aceptar);
 app.patch('/rechazar', OrdenController.rechazar);

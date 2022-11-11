@@ -1,6 +1,8 @@
 import Usuario from '../models/usuario'
+import Orden from '../models/orden'
 import Proveedor from '../models/proveedor'
 import helpers from './helpers'
+import tokenServer from '../services/token'
 import { Types } from 'mongoose'
 
 let add = async (req, res, next) => {
@@ -338,6 +340,184 @@ let getMateriasPrimasByIdPaginate = async (req, res, next) => {
   }
 }
 
+let getMateriasPrimasPaginate = async (req, res, next) => {
+  const { limit, page } = req.query;
+  const { token } = req.headers;
+  try {
+    const user = await tokenServer.decode(token);
+    const proveedor = await Proveedor.findOne({ usuario: user._id, status: true }).populate('usuario');
+    let total = 0;
+    for (let i = 0; i < proveedor.materiasPrimas.length; i++) {
+      if (proveedor.materiasPrimas[i].status) {
+        total++;
+      }
+    }
+    const data = await Proveedor.aggregate([
+      {
+        '$match': {
+          '_id': proveedor._id,
+          'status': true
+        }
+      }, {
+        '$unwind': '$materiasPrimas'
+      }, {
+        '$match': {
+          'materiasPrimas.status': true
+        }
+      }, {
+        '$project': {
+          'materiaPrima': '$materiasPrimas.materiaPrima',
+          'cantidad': '$materiasPrimas.cantidad',
+          'precio': '$materiasPrimas.precio'
+        }
+      }, {
+        '$lookup': {
+          'from': 'materiaPrima',
+          'localField': 'materiaPrima',
+          'foreignField': '_id',
+          'as': 'materiaPrima'
+        }
+      }, {
+        '$project': {
+          'nombre': {
+            '$first': '$materiaPrima.nombre'
+          },
+          'descripcion': {
+            '$first': '$materiaPrima.descripcion'
+          },
+          'foto': {
+            '$first': '$materiaPrima.foto'
+          },
+          'cantidad': '$cantidad',
+          'precio': '$precio',
+          'categoriaMateriaPrima': {
+            '$first': '$materiaPrima.categoriaMateriaPrima'
+          }
+        }
+      }, {
+        '$lookup': {
+          'from': 'categoriaMateriaPrima',
+          'localField': 'categoriaMateriaPrima',
+          'foreignField': '_id',
+          'as': 'categoriaMateriaPrima'
+        }
+      }, {
+        '$project': {
+          'nombre': '$nombre',
+          'descripcion': '$descripcion',
+          'foto': '$foto',
+          'cantidad': '$cantidad',
+          'precio': '$precio',
+          'categoriaMateriaPrima': {
+            '$first': '$categoriaMateriaPrima.nombre'
+          }
+        }
+      }, {
+        '$limit': Number(limit)
+      }, {
+        '$skip': (page - 1) * limit
+      }
+    ]);
+    return res.status(200).json({ results: data, total, totalPages: Math.ceil(total / limit) });
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
+}
+
+let getOrdenesPaginate = async (req, res, next) => {
+  const { limit, page } = req.query;
+  const { token } = req.headers;
+  try {
+      const user = await tokenServer.decode(token);
+      const proveedor = await Proveedor.findOne({ usuario: user._id, status: true }).populate('usuario');
+      const total = await Orden.find({ proveedor: proveedor._id, status: true });
+      const data = await Orden.aggregate([
+          {
+              '$match': {
+                  'proveedor': proveedor._id,
+                  'status': true
+              }
+          }, {
+              '$unwind': '$materiasPrimas'
+          }, {
+              '$group': {
+                  '_id': '$_id',
+                  'total': {
+                      '$sum': {
+                          '$multiply': [
+                              '$materiasPrimas.precio', '$materiasPrimas.cantidad'
+                          ]
+                      }
+                  },
+                  'observacion': {
+                      '$first': '$observacion'
+                  },
+                  'estadoOrden': {
+                      '$first': '$estadoOrden'
+                  },
+                  'fechaEntrega': {
+                      '$first': '$fechaEntrega'
+                  },
+                  'proveedor': {
+                      '$first': '$proveedor'
+                  }
+              }
+          }, {
+              '$lookup': {
+                  'from': 'proveedor',
+                  'localField': 'proveedor',
+                  'foreignField': '_id',
+                  'as': 'proveedor'
+              }
+          }, {
+              '$project': {
+                  'total': '$total',
+                  'observacion': '$observacion',
+                  'estadoOrden': '$estadoOrden',
+                  'fechaEntrega': '$fechaEntrega',
+                  'proveedor': {
+                      '$first': '$proveedor'
+                  }
+              }
+          }, {
+              '$lookup': {
+                  'from': 'usuario',
+                  'localField': 'proveedor.usuario',
+                  'foreignField': '_id',
+                  'as': 'proveedor'
+              }
+          }, {
+              '$project': {
+                  'total': '$total',
+                  'observacion': '$observacion',
+                  'estadoOrden': '$estadoOrden',
+                  'fechaEntrega': '$fechaEntrega',
+                  'proveedor': {
+                      '$concat': [
+                          {
+                              '$first': '$proveedor.apellidos'
+                          }, ' ', {
+                              '$first': '$proveedor.nombres'
+                          }
+                      ]
+                  }
+              }
+          }, {
+              '$limit': Number(limit)
+          }, {
+              '$skip': (page - 1) * limit
+          }
+      ])
+      res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+  } catch (e) {
+      res.status(500).send({
+          message: "Error en el proceso"
+      })
+  }
+}
+
 let getById = async (req, res, next) => {
   let id = req.query.id;
   try {
@@ -391,6 +571,8 @@ export default {
   getAllPaginate,
   getMateriasPrimasById,
   getMateriasPrimasByIdPaginate,
+  getMateriasPrimasPaginate,
+  getOrdenesPaginate,
   getById,
   update,
   remove

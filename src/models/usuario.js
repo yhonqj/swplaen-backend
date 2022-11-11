@@ -6,6 +6,7 @@ const UsuarioSchema = new Schema({
     correo: { type: String, required: true },
     celular: { type: String, required: true },
     password: { type: String, required: true },
+    dni: { type: String, required: true },
     tipoUsuario: { type: Number, required: true },
     creadoPor: { type: Schema.Types.ObjectId, ref: "usuario" },
     fechaCreacion: { type: Date, default: Date.now },

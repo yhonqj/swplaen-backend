@@ -4,6 +4,7 @@ const movimientosSubSchema = new Schema({
     cantidad: { type: Number, required: true }, 
     detalle: { type: String, required: false, maxlength: 400 },
     fecha: { type: Date, required: true },
+    tipoMovimiento: { type: Number, required: true }
 },{_id: false});
 
 const productosSubSchema = new Schema({ 

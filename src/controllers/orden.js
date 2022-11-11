@@ -119,6 +119,53 @@ let getAllPaginate = async (req, res, next) => {
     }
 }
 
+let getMateriasPrimasByIdPaginate = async (req, res, next) => {
+    const { id, limit, page } = req.query;
+    try {
+        const total = await Orden.aggregate([
+            {
+              '$match': {
+                '_id': new Types.ObjectId(id), 
+                'status': true
+              }
+            }, {
+              '$unwind': '$materiasPrimas'
+            }, {
+              '$project': {
+                'cantidad': '$materiasPrimas.cantidad', 
+                'precio': '$materiasPrimas.precio', 
+                'materiaPrima': '$materiasPrimas.materiaPrima'
+              }
+            }
+          ]);
+        const data = await Orden.aggregate([
+            {
+              '$match': {
+                '_id': new Types.ObjectId(id), 
+                'status': true
+              }
+            }, {
+              '$unwind': '$materiasPrimas'
+            }, {
+              '$project': {
+                'cantidad': '$materiasPrimas.cantidad', 
+                'precio': '$materiasPrimas.precio', 
+                'materiaPrima': '$materiasPrimas.materiaPrima'
+              }
+            },{
+                '$limit': Number(limit)
+            }, {
+                '$skip': (page - 1) * limit
+            }
+          ]);
+          return res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+    } catch (e) {
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
 let getById = async (req, res, next) => {
     const id = req.query.id
     try {
@@ -292,6 +339,7 @@ export default {
     add,
     getAll,
     getAllPaginate,
+    getMateriasPrimasByIdPaginate,
     getById,
     rechazar,
     aceptar,

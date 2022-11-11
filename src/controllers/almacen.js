@@ -32,7 +32,7 @@ let getProductoById = async (req, res, next) => {
 }
 
 let addProducto = async (req, res, next) => {
-    const { idAlmacen, stock, stockMinimo, idProducto, detalle, fecha } = req.body;
+    const { idAlmacen, stock, idProducto, detalle, fecha } = req.body;
     try {
         const almacen = await Almacen.findOne({ _id: idAlmacen, status: true });
         if (!almacen){
@@ -40,7 +40,7 @@ let addProducto = async (req, res, next) => {
                 message: 'No se encontró el almacén'
             })
         }
-        const movimientos = { cantidad: stock, detalle, fecha };
+        const movimientos = { cantidad: stock, detalle, fecha, tipoMovimiento: 1 };
         if (almacen.productos.length !== 0) {
             for (let i = 0; i < almacen.productos.length; i++) {
                 if (almacen.productos[i].producto.toString() === idProducto && almacen.productos[i].status) {
@@ -50,14 +50,14 @@ let addProducto = async (req, res, next) => {
                     return res.status(200).json(data);
                 }
                 else if (almacen.productos[i].producto.toString() !== idProducto && almacen.productos[i].status && (i === almacen.productos.length - 1)) {
-                    almacen.productos.push({ stock, stockMinimo, producto: idProducto, movimientos: [movimientos] })
+                    almacen.productos.push({ stock, producto: idProducto, movimientos: [movimientos] })
                     const data = await Almacen.findByIdAndUpdate({ _id: idAlmacen }, { productos: almacen.productos });
                     return res.status(200).json(data);
                 }
             }
         }
         else {
-            almacen.productos.push({ stock, stockMinimo, producto: idProducto, movimientos: [movimientos] })
+            almacen.productos.push({ stock, producto: idProducto, movimientos: [movimientos] })
             const data = await Almacen.findByIdAndUpdate({ _id: idAlmacen }, { productos: almacen.productos });
             return res.status(200).json(data);
         }
@@ -315,6 +315,71 @@ let getProductosByIdPaginate = async (req, res, next) => {
     }
 }
 
+let getMovimientosProductoByIdPaginate = async (req, res, next) => {
+  let { id, idProducto, limit, page } = req.query;
+  try {
+    const total = await Almacen.aggregate([
+      {
+        '$match': {
+          '_id': new Types.ObjectId(id), 
+          'status': true
+        }
+      }, {
+        '$unwind': '$productos'
+      }, {
+        '$match': {
+          'productos.producto': new Types.ObjectId(idProducto)
+        }
+      }, {
+        '$unwind': '$productos.movimientos'
+      }, {
+        '$project': {
+          'producto': '$productos.producto', 
+          'cantidad': '$productos.movimientos.cantidad', 
+          'detalle': '$productos.movimientos.detalle', 
+          'fecha': '$productos.movimientos.fecha', 
+          'tipoMovimiento': '$productos.movimientos.tipoMovimiento'
+        }
+      }
+    ]);
+      const data = await Almacen.aggregate([
+        {
+          '$match': {
+            '_id': new Types.ObjectId(id), 
+            'status': true
+          }
+        }, {
+          '$unwind': '$productos'
+        }, {
+          '$match': {
+            'productos.producto': new Types.ObjectId(idProducto)
+          }
+        }, {
+          '$unwind': '$productos.movimientos'
+        }, {
+          '$project': {
+            'producto': '$productos.producto', 
+            'cantidad': '$productos.movimientos.cantidad', 
+            'detalle': '$productos.movimientos.detalle', 
+            'fecha': '$productos.movimientos.fecha', 
+            'tipoMovimiento': '$productos.movimientos.tipoMovimiento'
+          }
+        },{
+          '$limit': Number(limit)
+      }, {
+          '$skip': ((page - 1) * limit)
+      }
+      ]);
+
+        return res.status(200).json({results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+  } catch (e){
+      console.log(e)
+      res.status(500).send({
+          message: "Error en el proceso"
+      })
+  }
+}
+
 let update = async (req, res, next) => {
     const id = req.body._id;
     const { codigo, descripcion, ubicacion } = req.body;
@@ -354,6 +419,7 @@ export default {
     getById,
     getProductosById,
     getProductosByIdPaginate,
+    getMovimientosProductoByIdPaginate,
     update,
     remove,
     addProducto,

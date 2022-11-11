@@ -8,6 +8,7 @@ app.get('/getAll', AlmacenController.getAll);
 app.get('/getProductoById', AlmacenController.getProductoById);
 app.get('/getProductosById', AlmacenController.getProductosById);
 app.get('/getProductosByIdPaginate', AlmacenController.getProductosByIdPaginate);
+app.get('/getMovimientosProductoByIdPaginate', AlmacenController.getMovimientosProductoByIdPaginate);
 app.get('/getAllPaginate', [
     check('limit', 'El límite es obligatorio').not().isEmpty(),
     check('page', 'La página es obligatoria').not().isEmpty(),
@@ -17,8 +18,8 @@ app.get('/getById', AlmacenController.getById);
 app.post('/add', AlmacenController.add);
 app.put('/update', AlmacenController.update);
 app.delete('/remove', AlmacenController.remove);
-app.patch('/addProducto', AlmacenController.addProducto);
-app.patch('/updateProducto', [ check('stockMinimo', 'El stock mínimo es obligatorio').notEmpty().isInt({ min:1, max: 2000}).withMessage('El stock mínimo debe ser un entero mayor a cero')], valid.validCampos, AlmacenController.updateProducto);
+app.patch('/addProducto', [check('stock','El stock es obligatorio').notEmpty().isInt().withMessage('El stock debe ser un valor entero')] , valid.validCampos , AlmacenController.addProducto);
+app.patch('/updateProducto', [ check('stockMinimo', 'El stock mínimo es obligatorio').notEmpty().isInt({ min:1 }).withMessage('El stock mínimo debe ser un entero mayor a cero')], valid.validCampos, AlmacenController.updateProducto);
 app.patch('/removeProducto', AlmacenController.removeProducto);
 
 export default app;
