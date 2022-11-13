@@ -2,6 +2,7 @@ import Tienda from '../models/tienda'
 import Almacen from '../models/almacen'
 import { Types } from 'mongoose'
 import Producto from '../models/producto';
+import constants from '../utils/constants';
 /**
   * Registra una tienda.
   *
@@ -10,18 +11,18 @@ import Producto from '../models/producto';
   * @return Respuesta en formato JSON.
 **/
 let add = async (req, res, next) => {
-    const { direccion, referencia } = req.body;
-    try {
-        const data = await Tienda.create({
-            direccion,
-            referencia
-        })
-        res.status(200).json(data);
-    } catch (e) {
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+  const { direccion, referencia } = req.body;
+  try {
+    const data = await Tienda.create({
+      direccion,
+      referencia
+    })
+    res.status(200).json(data);
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -37,76 +38,78 @@ let add = async (req, res, next) => {
   * @param {number} descuento El descuento debe ser mayor o igual a cero.
   * @return Respuesta en formato JSON.
 **/
-let addProducto = async(req, res, next) => {
-    const { idAlmacen, cantidad, idProducto, detalle, fecha, precio, descuento, idTienda } = req.body;
-    try {
-        const tienda = await Tienda.findOne({ _id: idTienda, status: true });
-        const almacen = await Almacen.findOne({ _id: idAlmacen, status: true });
-        const producto = await Producto.findOne({ _id: idProducto, status: true });
-        if (!tienda){
-            return res.status(404).send({
-                message: 'No se encontró la tienda'
-            })
-        }
-        if (!almacen){
-            return res.status(404).send({
-                message: 'No se encontró el almacén'
-            })
-        }
-        if (!producto){
-          return res.status(404).send({
-              message: 'No se encontró el producto'
-          })
-      }
-        const movimientos = { cantidad, detalle, fecha };
-        for (let i = 0; i < almacen.productos.length; i++) {
-            if (almacen.productos[i].producto.toString() === idProducto && almacen.productos[i].status) {
-                almacen.productos[i].stock -= cantidad;
-                if (almacen.productos[i].stock < 0){
-                    return res.status(500).send({
-                        message: 'El stock no puede ser menor a cero'
-                    })
-                }
-                if (almacen.productos[i].stock < almacen.productos[i].stockMinimo){
-                    // Notificación al correo
-                }
-                almacen.productos[i].movimientos.push(movimientos);
-                await Almacen.findByIdAndUpdate({ _id: idAlmacen }, { productos: almacen.productos });
-                break;
-            }
-            else if (almacen.productos[i].producto.toString() !== idProducto && almacen.productos[i].status && (i === almacen.productos.length - 1)) {
-                return res.status(404).send({
-                    message: 'No se encontró el producto en el almacén'
-                })
-            }
-        }
-        
-        if (tienda.productos.length !== 0) {
-            for (let i = 0; i < tienda.productos.length; i++) {
-                if (tienda.productos[i].producto.toString() === idProducto && tienda.productos[i].status) {
-                    tienda.productos[i].stock += cantidad;
-                    const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
-                    return res.status(200).json(data);
-                }
-                else if (tienda.productos[i].producto.toString() !== idProducto && tienda.productos[i].status && (i === tienda.productos.length - 1)) {
-                    tienda.productos.push({ stock: cantidad, precio, descuento, producto: idProducto })
-                    const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
-                    return res.status(200).json(data);
-                }
-            }
-        }
-        else {
-            tienda.productos.push({ stock: cantidad, precio, descuento, producto: idProducto })
-            const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
-            return res.status(200).json(data);
-        }
-
-    } catch (e) {
-        console.log(e)
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
+let addProducto = async (req, res, next) => {
+  const { idAlmacen, cantidad, idProducto, fecha, precio, descuento, idTienda } = req.body;
+  try {
+    const tienda = await Tienda.findOne({ _id: idTienda, status: true });
+    const almacen = await Almacen.findOne({ _id: idAlmacen, status: true });
+    const producto = await Producto.findOne({ _id: idProducto, status: true });
+    if (!tienda) {
+      return res.status(404).send({
+        message: 'No se encontró la tienda'
+      })
     }
+    if (!almacen) {
+      return res.status(404).send({
+        message: 'No se encontró el almacén'
+      })
+    }
+    if (!producto) {
+      return res.status(404).send({
+        message: 'No se encontró el producto'
+      })
+    }
+    let movimientos = { cantidad, fecha, tipoMovimiento: constants.tipoMovimiento.salida };
+    for (let i = 0; i < almacen.productos.length; i++) {
+      if (almacen.productos[i].producto.toString() === idProducto && almacen.productos[i].status) {
+        movimientos.detalle = constants.detalleMovimiento.addTienda;
+        almacen.productos[i].stock -= cantidad;
+        if (almacen.productos[i].stock < 0) {
+          return res.status(500).send({
+            message: 'El stock no puede ser menor a cero'
+          })
+        }
+        if (almacen.productos[i].stock < almacen.productos[i].stockMinimo) {
+          // Notificación al correo
+        }
+        almacen.productos[i].movimientos.push(movimientos);
+        await Almacen.findByIdAndUpdate({ _id: idAlmacen }, { productos: almacen.productos });
+        break;
+      }
+      else if (almacen.productos[i].producto.toString() !== idProducto && almacen.productos[i].status && (i === almacen.productos.length - 1)) {
+        return res.status(404).send({
+          message: 'No se encontró el producto en el almacén'
+        })
+      }
+    }
+
+    if (tienda.productos.length !== 0) {
+      for (let i = 0; i < tienda.productos.length; i++) {
+        if (tienda.productos[i].producto.toString() === idProducto && tienda.productos[i].status) {
+          tienda.productos[i].stock += cantidad;
+          tienda.productos[i].precio = precio;
+          const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
+          return res.status(200).json(data);
+        }
+        else if (tienda.productos[i].producto.toString() !== idProducto && tienda.productos[i].status && (i === tienda.productos.length - 1)) {
+          tienda.productos.push({ stock: cantidad, precio, descuento, producto: idProducto })
+          const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
+          return res.status(200).json(data);
+        }
+      }
+    }
+    else {
+      tienda.productos.push({ stock: cantidad, precio, descuento, producto: idProducto })
+      const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
+      return res.status(200).json(data);
+    }
+
+  } catch (e) {
+    console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -120,33 +123,33 @@ let addProducto = async(req, res, next) => {
   * @return Respuesta en formato JSON.
 **/
 let updateProducto = async (req, res, next) => {
-    const { idTienda, idProducto, precio, descuento, disponible } = req.body;
-    try {
-        const tienda = await Tienda.findOne({ _id: idTienda, status: true });
-        if (!tienda){
-            return res.status(404).send({
-                message: 'No se encontró la tienda'
-            })
-        }
-        for (let i = 0; i < tienda.productos.length; i++) {
-            if (tienda.productos[i].producto.toString() === idProducto && tienda.productos[i].status) {
-                tienda.productos[i].precio = precio;
-                tienda.productos[i].descuento = descuento;
-                tienda.productos[i].disponible = disponible;
-                const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
-                return res.status(200).json(data);
-            }
-            else if (tienda.productos[i].producto.toString() !== idProducto && tienda.productos[i].status && (i === tienda.productos.length - 1)) {
-                return res.status(404).send({
-                    message: 'No se encontró el producto en la tienda'
-                })
-            }
-        }
-    } catch (e) {
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
+  const { idTienda, idProducto, precio, descuento, disponible } = req.body;
+  try {
+    const tienda = await Tienda.findOne({ _id: idTienda, status: true });
+    if (!tienda) {
+      return res.status(404).send({
+        message: 'No se encontró la tienda'
+      })
     }
+    for (let i = 0; i < tienda.productos.length; i++) {
+      if (tienda.productos[i].producto.toString() === idProducto && tienda.productos[i].status) {
+        tienda.productos[i].precio = precio;
+        tienda.productos[i].descuento = descuento;
+        tienda.productos[i].disponible = disponible;
+        const data = await Tienda.findByIdAndUpdate({ _id: idTienda }, { productos: tienda.productos });
+        return res.status(200).json(data);
+      }
+      else if (tienda.productos[i].producto.toString() !== idProducto && tienda.productos[i].status && (i === tienda.productos.length - 1)) {
+        return res.status(404).send({
+          message: 'No se encontró el producto en la tienda'
+        })
+      }
+    }
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -155,14 +158,14 @@ let updateProducto = async (req, res, next) => {
   * @return Respuesta en formato JSON.
 **/
 let getAll = async (req, res, next) => {
-    try {
-        const data = await Tienda.find({ status: true });
-        res.status(200).json(data);
-    } catch (e) {
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+  try {
+    const data = await Tienda.find({ status: true });
+    res.status(200).json(data);
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -173,17 +176,17 @@ let getAll = async (req, res, next) => {
   * @return Respuesta en formato JSON.
 **/
 let getAllPaginate = async (req, res, next) => {
-    const { limit, page } = req.query;
-    try {
-        const total = await Tienda.find({ status: true })
-        const data = await Tienda.find({ status: true }).skip((page - 1) * limit).limit(limit)
-        res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
-    } catch (e) {
-        console.log(e)
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+  const { limit, page } = req.query;
+  try {
+    const total = await Tienda.find({ status: true })
+    const data = await Tienda.find({ status: true }).skip((page - 1) * limit).limit(limit)
+    res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+  } catch (e) {
+    console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -193,194 +196,194 @@ let getAllPaginate = async (req, res, next) => {
   * @return Respuesta en formato JSON.
 **/
 let getById = async (req, res, next) => {
-    let id = req.query.id;
-    try {
-        const data = await Tienda.findOne({ _id: id })
-        res.status(200).json(data);
-    } catch (e) {
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+  let id = req.query.id;
+  try {
+    const data = await Tienda.findOne({ _id: id })
+    res.status(200).json(data);
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 let getProductosById = async (req, res, next) => {
-    let id = req.query.id;
-    try {
-        const data = await Tienda.aggregate([
-            {
-              '$match': {
-                '_id': new Types.ObjectId(id), 
-                'status': true
-              }
-            }, {
-              '$unwind': '$productos'
-            }, {
-              '$match': {
-                'productos.status': true
-              }
-            }, {
-              '$project': {
-                'productos': '$productos'
-              }
-            }, {
-              '$lookup': {
-                'from': 'producto', 
-                'localField': 'productos.producto', 
-                'foreignField': '_id', 
-                'as': 'productos.producto'
-              }
-            }, {
-              '$project': {
-                'stock': '$productos.stock', 
-                'precio': '$productos.precio', 
-                'descuento': '$productos.descuento', 
-                'disponible': '$productos.disponible', 
-                'idProducto': {
-                  '$first': '$productos.producto._id'
-                }, 
-                'nombre': {
-                  '$first': '$productos.producto.nombre'
-                }, 
-                'descripcion': {
-                  '$first': '$productos.producto.descripcion'
-                }, 
-                'foto': {
-                  '$first': '$productos.producto.foto'
-                }, 
-                'categoriaProducto': {
-                  '$first': '$productos.producto.categoriaProducto'
-                }
-              }
-            }, {
-              '$lookup': {
-                'from': 'categoriaProducto', 
-                'localField': 'categoriaProducto', 
-                'foreignField': '_id', 
-                'as': 'categoriaProducto'
-              }
-            }, {
-              '$project': {
-                'idProducto': '$idProducto', 
-                'stock': '$stock', 
-                'precio': '$precio', 
-                'descuento': '$descuento', 
-                'disponible': '$disponible', 
-                'nombre': '$nombre', 
-                'descripcion': '$descripcion', 
-                'foto': '$foto', 
-                'categoriaProducto': {
-                  '$first': '$categoriaProducto.nombre'
-                }, 
-                'idCategoriaProducto': {
-                  '$first': '$categoriaProducto._id'
-                }
-              }
-            }
-          ]);
+  let id = req.query.id;
+  try {
+    const data = await Tienda.aggregate([
+      {
+        '$match': {
+          '_id': new Types.ObjectId(id),
+          'status': true
+        }
+      }, {
+        '$unwind': '$productos'
+      }, {
+        '$match': {
+          'productos.status': true
+        }
+      }, {
+        '$project': {
+          'productos': '$productos'
+        }
+      }, {
+        '$lookup': {
+          'from': 'producto',
+          'localField': 'productos.producto',
+          'foreignField': '_id',
+          'as': 'productos.producto'
+        }
+      }, {
+        '$project': {
+          'stock': '$productos.stock',
+          'precio': '$productos.precio',
+          'descuento': '$productos.descuento',
+          'disponible': '$productos.disponible',
+          'idProducto': {
+            '$first': '$productos.producto._id'
+          },
+          'nombre': {
+            '$first': '$productos.producto.nombre'
+          },
+          'descripcion': {
+            '$first': '$productos.producto.descripcion'
+          },
+          'foto': {
+            '$first': '$productos.producto.foto'
+          },
+          'categoriaProducto': {
+            '$first': '$productos.producto.categoriaProducto'
+          }
+        }
+      }, {
+        '$lookup': {
+          'from': 'categoriaProducto',
+          'localField': 'categoriaProducto',
+          'foreignField': '_id',
+          'as': 'categoriaProducto'
+        }
+      }, {
+        '$project': {
+          'idProducto': '$idProducto',
+          'stock': '$stock',
+          'precio': '$precio',
+          'descuento': '$descuento',
+          'disponible': '$disponible',
+          'nombre': '$nombre',
+          'descripcion': '$descripcion',
+          'foto': '$foto',
+          'categoriaProducto': {
+            '$first': '$categoriaProducto.nombre'
+          },
+          'idCategoriaProducto': {
+            '$first': '$categoriaProducto._id'
+          }
+        }
+      }
+    ]);
 
-          return res.status(200).json(data);
-    } catch (e){
-        console.log(e)
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+    return res.status(200).json(data);
+  } catch (e) {
+    console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 let getProductosByIdPaginate = async (req, res, next) => {
-    let { id, limit, page } = req.query;
-    try {
-        const tienda = await Tienda.findOne({_id: id, status: true});
-        let total = 0;
-        for (let i = 0; i < tienda.productos.length; i++){
-            if (tienda.productos[i].status){
-                total++;
-            }
-        }
-        const data = await Tienda.aggregate([
-            {
-              '$match': {
-                '_id': new Types.ObjectId(id), 
-                'status': true
-              }
-            }, {
-              '$unwind': '$productos'
-            }, {
-              '$match': {
-                'productos.status': true
-              }
-            }, {
-              '$project': {
-                'productos': '$productos'
-              }
-            }, {
-              '$lookup': {
-                'from': 'producto', 
-                'localField': 'productos.producto', 
-                'foreignField': '_id', 
-                'as': 'productos.producto'
-              }
-            }, {
-              '$project': {
-                'stock': '$productos.stock', 
-                'precio': '$productos.precio', 
-                'descuento': '$productos.descuento', 
-                'disponible': '$productos.disponible', 
-                'idProducto': {
-                  '$first': '$productos.producto._id'
-                }, 
-                'nombre': {
-                  '$first': '$productos.producto.nombre'
-                }, 
-                'descripcion': {
-                  '$first': '$productos.producto.descripcion'
-                }, 
-                'foto': {
-                  '$first': '$productos.producto.foto'
-                }, 
-                'categoriaProducto': {
-                  '$first': '$productos.producto.categoriaProducto'
-                }
-              }
-            }, {
-              '$lookup': {
-                'from': 'categoriaProducto', 
-                'localField': 'categoriaProducto', 
-                'foreignField': '_id', 
-                'as': 'categoriaProducto'
-              }
-            }, {
-              '$project': {
-                'idProducto': '$idProducto', 
-                'stock': '$stock', 
-                'precio': '$precio', 
-                'descuento': '$descuento', 
-                'disponible': '$disponible', 
-                'nombre': '$nombre', 
-                'descripcion': '$descripcion', 
-                'foto': '$foto', 
-                'categoriaProducto': {
-                  '$first': '$categoriaProducto.nombre'
-                }, 
-                'idCategoriaProducto': {
-                  '$first': '$categoriaProducto._id'
-                }
-              }
-            }, {
-                '$limit': Number(limit)
-            }, {
-                '$skip': ((page - 1) * limit)
-            }
-          ]);
-
-          return res.status(200).json({results: data, total, totalPages: Math.ceil(total / limit) });
-    } catch (e){
-        console.log(e)
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
+  let { id, limit, page } = req.query;
+  try {
+    const tienda = await Tienda.findOne({ _id: id, status: true });
+    let total = 0;
+    for (let i = 0; i < tienda.productos.length; i++) {
+      if (tienda.productos[i].status) {
+        total++;
+      }
     }
+    const data = await Tienda.aggregate([
+      {
+        '$match': {
+          '_id': new Types.ObjectId(id),
+          'status': true
+        }
+      }, {
+        '$unwind': '$productos'
+      }, {
+        '$match': {
+          'productos.status': true
+        }
+      }, {
+        '$project': {
+          'productos': '$productos'
+        }
+      }, {
+        '$lookup': {
+          'from': 'producto',
+          'localField': 'productos.producto',
+          'foreignField': '_id',
+          'as': 'productos.producto'
+        }
+      }, {
+        '$project': {
+          'stock': '$productos.stock',
+          'precio': '$productos.precio',
+          'descuento': '$productos.descuento',
+          'disponible': '$productos.disponible',
+          'idProducto': {
+            '$first': '$productos.producto._id'
+          },
+          'nombre': {
+            '$first': '$productos.producto.nombre'
+          },
+          'descripcion': {
+            '$first': '$productos.producto.descripcion'
+          },
+          'foto': {
+            '$first': '$productos.producto.foto'
+          },
+          'categoriaProducto': {
+            '$first': '$productos.producto.categoriaProducto'
+          }
+        }
+      }, {
+        '$lookup': {
+          'from': 'categoriaProducto',
+          'localField': 'categoriaProducto',
+          'foreignField': '_id',
+          'as': 'categoriaProducto'
+        }
+      }, {
+        '$project': {
+          'idProducto': '$idProducto',
+          'stock': '$stock',
+          'precio': '$precio',
+          'descuento': '$descuento',
+          'disponible': '$disponible',
+          'nombre': '$nombre',
+          'descripcion': '$descripcion',
+          'foto': '$foto',
+          'categoriaProducto': {
+            '$first': '$categoriaProducto.nombre'
+          },
+          'idCategoriaProducto': {
+            '$first': '$categoriaProducto._id'
+          }
+        }
+      }, {
+        '$limit': Number(limit)
+      }, {
+        '$skip': ((page - 1) * limit)
+      }
+    ]);
+
+    return res.status(200).json({ results: data, total, totalPages: Math.ceil(total / limit) });
+  } catch (e) {
+    console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -392,18 +395,18 @@ let getProductosByIdPaginate = async (req, res, next) => {
   * @return Respuesta en formato JSON.
 **/
 let update = async (req, res, next) => {
-    const { direccion, referencia, id } = req.body;
-    try {
-        const data = await Tienda.findByIdAndUpdate({ _id: id }, {
-            direccion,
-            referencia,
-        })
-        res.status(200).json(data);
-    } catch (e) {
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+  const { direccion, referencia, id } = req.body;
+  try {
+    const data = await Tienda.findByIdAndUpdate({ _id: id }, {
+      direccion,
+      referencia,
+    })
+    res.status(200).json(data);
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 /**
@@ -413,28 +416,28 @@ let update = async (req, res, next) => {
   * @return Respuesta en formato JSON.
 **/
 let remove = async (req, res, next) => {
-    const id = req.body.id;
-    try {
-        const data = await Tienda.findByIdAndUpdate({ _id: id }, {
-            status: false
-        })
-        res.status(200).json(data);
-    } catch (e) {
-        res.status(500).send({
-            message: "Error en el proceso"
-        })
-    }
+  const id = req.body.id;
+  try {
+    const data = await Tienda.findByIdAndUpdate({ _id: id }, {
+      status: false
+    })
+    res.status(200).json(data);
+  } catch (e) {
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
 }
 
 export {
-    add,
-    getAll,
-    getAllPaginate,
-    getById,
-    getProductosById,
-    getProductosByIdPaginate,
-    update,
-    remove,
-    addProducto,
-    updateProducto
+  add,
+  getAll,
+  getAllPaginate,
+  getById,
+  getProductosById,
+  getProductosByIdPaginate,
+  update,
+  remove,
+  addProducto,
+  updateProducto
 }
