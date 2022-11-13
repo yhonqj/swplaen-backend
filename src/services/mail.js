@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
-let sendEmail = async () => {
+let sendEmail = async (email,message) => {
     // Generate test SMTP service account from ethereal.email
     // Only needed if you don't have a real mail account for testing
     try {
@@ -24,10 +24,10 @@ let sendEmail = async () => {
         // send mail with defined transport object
         let info = await transporter.sendMail({
             from: "ailed.riveraperales@outlook.com", // sender address
-            to: "black56717@gmail.com", // list of receivers
+            to: email, // list of receivers
             subject: "Hello ✔", // Subject line
-            text: "Hello world?", // plain text body
-            html: "<b>Hello world?</b>", // html body
+            text: message, // plain text body
+            html: "<b>"+message+"</b>", // html body
         });
 
         console.log("Message sent: %s", info.messageId);

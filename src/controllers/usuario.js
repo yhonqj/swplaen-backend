@@ -3,10 +3,13 @@ import Proveedor from '../models/proveedor'
 import helpers from './helpers'
 import enums from '../utils/enums'
 import tokenServer from '../services/token'
+import functions from '../utils/functions'
+import mail from '../services/mail'
 
 let addAdmin = async (req, res, next) => {
     const { nombres, apellidos, correo, celular, dni, tipoUsuario } = req.body;
-    const password = await helpers.encryptPassword("pinga");
+    const pass = functions.generatePasswordRand(16);
+    const password = await helpers.encryptPassword(pass);
     try {
         const tipo = enums.tipoUsuario.find(data => data.id === tipoUsuario)
         if (!tipo) {
@@ -23,6 +26,7 @@ let addAdmin = async (req, res, next) => {
             dni,
             tipoUsuario
         })
+        mail.sendEmail(correo,'Contraseña: '+pass);
         return res.status(200).json(data);
     } catch (e) {
         res.status(500).send({

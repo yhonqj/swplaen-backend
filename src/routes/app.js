@@ -9,6 +9,7 @@ import Usuario from './usuario';
 import MateriaPrima from './materiaPrima';
 import Proveedor from './proveedor';
 import Orden from './orden';
+import tipoMovimiento from './tipoMovimiento';
 
 const router = routerx();
 
@@ -17,6 +18,7 @@ router.use('/almacenMp', AlmacenMp);
 router.use('/tienda', Tienda);
 router.use('/producto', Producto);
 router.use('/materiaPrima', MateriaPrima);
+router.use('/tipoMovimiento', tipoMovimiento);
 router.use('/categoriaProducto', CategoriaProducto);
 router.use('/categoriaMateriaPrima', CategoriaMateriaPrima);
 router.use('/usuario', Usuario);
