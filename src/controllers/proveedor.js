@@ -4,10 +4,13 @@ import Proveedor from '../models/proveedor'
 import helpers from './helpers'
 import tokenServer from '../services/token'
 import { Types } from 'mongoose'
+import functions from '../utils/functions'
+import mail from '../services/mail'
 
 let add = async (req, res, next) => {
   const { nombres, apellidos, correo, celular, dni, ruc, razonSocial, direccion, referencia, codigoPostal } = req.body;
-  const password = await helpers.encryptPassword("pinga");
+  const pass = functions.generatePasswordRand(16);
+  const password = await helpers.encryptPassword(pass);
   try {
     let usuario = await Usuario.findOne({ correo });
     if (usuario){
@@ -16,14 +19,14 @@ let add = async (req, res, next) => {
       })
     }
 
-    let proveedor = await Proveedor.findOne({ dni });
-    if (proveedor){
+    usuario = await Usuario.findOne({ dni });
+    if (usuario){
       return res.status(500).send({
         message: "Ya existe un proveedor con este dni"
       })
     }
 
-    proveedor = await Proveedor.findOne({ ruc });
+    let proveedor = await Proveedor.findOne({ ruc });
     if (proveedor){
       return res.status(500).send({
         message: "Ya existe un proveedor con este ruc"
@@ -36,10 +39,10 @@ let add = async (req, res, next) => {
       correo,
       celular,
       password,
+      dni,
       tipoUsuario: 3
     })
     await Proveedor.create({
-      dni,
       ruc,
       razonSocial,
       direccion,
@@ -47,6 +50,7 @@ let add = async (req, res, next) => {
       codigoPostal,
       usuario: data._id
     })
+    mail.sendEmail(correo,'Contraseña: '+pass)
     return res.status(200).json(data);
   } catch (e) {
     console.log(e)

@@ -12,7 +12,6 @@ const MateriasPrimasSubSchema = new Schema({
 },{_id: false});
 
 const ProveedorSchema = new Schema({
-    dni: { type: String, required: true },
     ruc: { type: String, required: true },
     razonSocial: { type: String, required: true },
     direccion: { type: String, required: true },

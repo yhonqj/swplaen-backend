@@ -61,8 +61,7 @@ let getById = async (req, res, next) => {
 let getAdminProfile = async (req, res, next) => {
     const { token } = req.headers;
     try {
-        const user = await tokenServer.decode(token);
-        let usuario = await Usuario.findOne(user._id);
+        const usuario = await tokenServer.decode(token);
         const tipoUsuario = enums.tipoUsuario.find(x => x.id === usuario.tipoUsuario);
         let perfil = {};
 
