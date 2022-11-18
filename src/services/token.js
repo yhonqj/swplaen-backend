@@ -15,14 +15,15 @@ let checkToken = async (token) => {
     const user = await Usuario.findOne({_id: data, status: true});
     if (user) {
         const token = await jwt.sign({_id: data}, process.env.TOKEN_KEY, {expiresIn: '1d'} )
-        return {token, idTipoUsuario: user.tipoUsuario}
+        return {token, tipoUsuario: user.tipoUsuario}
     } else {
         return false;
     }
 }
 
-let encode = async (_id) => {
-    const token = await jwt.sign({_id}, process.env.TOKEN_KEY, {expiresIn: '1d'} )
+let encode = async (user) => {
+    const {_id, tipoUsuario} = user
+    const token = await jwt.sign({_id, tipoUsuario}, process.env.TOKEN_KEY, {expiresIn: '1d'} )
     return token;
 }
 

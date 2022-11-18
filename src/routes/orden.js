@@ -8,7 +8,12 @@ const app = routerx();
 app.post('/add', OrdenController.add);
 app.get('/getAll', OrdenController.getAll);
 app.get('/getAllPaginate', OrdenController.getAllPaginate);
-app.get('/getMateriasPrimasByIdPaginate', OrdenController.getMateriasPrimasByIdPaginate);
+app.get('/getMateriasPrimasById', OrdenController.getMateriasPrimasById);
+app.get('/getMateriasPrimasByIdPaginate',[
+    check('limit', 'El límite es obligatorio').not().isEmpty(),
+    check('page', 'La página es obligatoria').not().isEmpty(),
+    valid.validCampos
+], OrdenController.getMateriasPrimasByIdPaginate);
 app.get('/getById', OrdenController.getById);
 app.patch('/aceptar', OrdenController.aceptar);
 app.patch('/rechazar', OrdenController.rechazar);

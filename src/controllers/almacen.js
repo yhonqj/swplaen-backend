@@ -23,8 +23,39 @@ let add = async (req, res, next) => {
 let getProductoById = async (req, res, next) => {
   const { id, idProducto } = req.query;
   try {
-    const data = await Almacen.findOne({ _id: id, 'productos.producto': idProducto, 'productos.status': true }).populate('productos.producto');
-    res.status(200).json({ nombre: data.productos[0].producto.nombre, stock: data.productos[0].stock, stockMinimo: data.productos[0].stockMinimo });
+    const data = (await Almacen.aggregate([
+      {
+        '$match': {
+          '_id': new Types.ObjectId(id), 
+          'status': true
+        }
+      }, 
+      {
+        '$unwind': '$productos'
+      }, {
+        '$match': {
+          'productos.producto': new Types.ObjectId(idProducto), 
+          'productos.status': true
+        }
+      }, {
+        '$lookup': {
+          'from': 'producto', 
+          'localField': 'productos.producto', 
+          'foreignField': '_id', 
+          'as': 'producto'
+        }
+      }, {
+        '$project': {
+          'producto': '$productos.producto', 
+          'nombre': {
+            '$first': '$producto.nombre'
+          }, 
+          'stock': '$productos.stock', 
+          'stockMinimo': '$productos.stockMinimo'
+        }
+      }
+    ])).find(c => c.producto.toString() === idProducto)
+    return res.status(200).json(data);
   } catch (e) {
     res.status(500).send({
       message: "Error en el proceso"
@@ -107,7 +138,7 @@ let removeProducto = async (req, res, next) => {
     const almacen = await Almacen.findOne({ _id: idAlmacen, status: true });
     for (let i = 0; i < almacen.productos.length; i++) {
       if (almacen.productos[i].producto.toString() === idProducto && almacen.productos[i].status) {
-        almacen.productos[i].producto.status = false;
+        almacen.productos[i].status = false;
         const data = await Almacen.findByIdAndUpdate({ _id: idAlmacen }, { productos: almacen.productos });
         return res.status(200).json(data);
       }

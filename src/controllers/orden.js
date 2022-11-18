@@ -119,46 +119,73 @@ let getAllPaginate = async (req, res, next) => {
     }
 }
 
+let getMateriasPrimasById = async (req, res, next) => {
+    const { id } = req.query;
+    try {
+        const data = await Orden.aggregate([
+            {
+                '$match': {
+                    '_id': new Types.ObjectId(id),
+                    'status': true
+                }
+            }, {
+                '$unwind': '$materiasPrimas'
+            }, {
+                '$project': {
+                    'cantidad': '$materiasPrimas.cantidad',
+                    'precio': '$materiasPrimas.precio',
+                    'materiaPrima': '$materiasPrimas.materiaPrima'
+                }
+            }
+        ]);
+        return res.status(200).json(data);
+    } catch (e) {
+        res.status(500).send({
+            message: "Error en el proceso"
+        })
+    }
+}
+
 let getMateriasPrimasByIdPaginate = async (req, res, next) => {
     const { id, limit, page } = req.query;
     try {
         const total = await Orden.aggregate([
             {
-              '$match': {
-                '_id': new Types.ObjectId(id), 
-                'status': true
-              }
+                '$match': {
+                    '_id': new Types.ObjectId(id),
+                    'status': true
+                }
             }, {
-              '$unwind': '$materiasPrimas'
+                '$unwind': '$materiasPrimas'
             }, {
-              '$project': {
-                'cantidad': '$materiasPrimas.cantidad', 
-                'precio': '$materiasPrimas.precio', 
-                'materiaPrima': '$materiasPrimas.materiaPrima'
-              }
+                '$project': {
+                    'cantidad': '$materiasPrimas.cantidad',
+                    'precio': '$materiasPrimas.precio',
+                    'materiaPrima': '$materiasPrimas.materiaPrima'
+                }
             }
-          ]);
+        ]);
         const data = await Orden.aggregate([
             {
-              '$match': {
-                '_id': new Types.ObjectId(id), 
-                'status': true
-              }
+                '$match': {
+                    '_id': new Types.ObjectId(id),
+                    'status': true
+                }
             }, {
-              '$unwind': '$materiasPrimas'
+                '$unwind': '$materiasPrimas'
             }, {
-              '$project': {
-                'cantidad': '$materiasPrimas.cantidad', 
-                'precio': '$materiasPrimas.precio', 
-                'materiaPrima': '$materiasPrimas.materiaPrima'
-              }
-            },{
+                '$project': {
+                    'cantidad': '$materiasPrimas.cantidad',
+                    'precio': '$materiasPrimas.precio',
+                    'materiaPrima': '$materiasPrimas.materiaPrima'
+                }
+            }, {
                 '$limit': Number(limit)
             }, {
                 '$skip': (page - 1) * limit
             }
-          ]);
-          return res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+        ]);
+        return res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
     } catch (e) {
         res.status(500).send({
             message: "Error en el proceso"
@@ -339,6 +366,7 @@ export default {
     add,
     getAll,
     getAllPaginate,
+    getMateriasPrimasById,
     getMateriasPrimasByIdPaginate,
     getById,
     rechazar,

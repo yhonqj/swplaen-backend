@@ -121,7 +121,7 @@ let loginAdmin = async (req, res, next) => {
         if (user) {
             let match = await helpers.matchPassword(password, user.password);
             if (match) {
-                let tokenReturn = await tokenServer.encode(user._id.toString());
+                let tokenReturn = await tokenServer.encode(user);
                 res.status(200).json({ token: tokenReturn })
             } else {
                 res.status(404).send({

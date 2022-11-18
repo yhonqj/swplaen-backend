@@ -61,30 +61,129 @@ let add = async (req, res, next) => {
 }
 
 let addMateriaPrima = async (req, res, next) => {
-  const { cantidad, precio, idMateriaPrima, idProveedor } = req.body;
+  const { token } = req.headers;
+  const { cantidad, precio, idMateriaPrima } = req.body;
   try {
-    const proveedor = await Proveedor.findOne({ _id: idProveedor, status: true });
+    const user = await tokenServer.decode(token);
+    const proveedor = await Proveedor.findOne({ usuario: user._id, status: true });
     if (proveedor.materiasPrimas.length !== 0) {
       for (let i = 0; i < proveedor.materiasPrimas.length; i++) {
         if (proveedor.materiasPrimas[i].materiaPrima.toString() === idMateriaPrima && proveedor.materiasPrimas[i].status) {
           proveedor.materiasPrimas[i].cantidad += cantidad;
-          const data = await Proveedor.findByIdAndUpdate({ _id: idProveedor }, { materiasPrimas: proveedor.materiasPrimas });
+          const data = await Proveedor.findByIdAndUpdate({ _id: proveedor._id }, { materiasPrimas: proveedor.materiasPrimas });
           return res.status(200).json(data);
         }
         else if (i === (proveedor.materiasPrimas.length - 1)) {
           proveedor.materiasPrimas.push({ cantidad, precio, materiaPrima: idMateriaPrima });
-          const data = await Proveedor.findByIdAndUpdate({ _id: idProveedor }, { materiasPrimas: proveedor.materiasPrimas });
+          const data = await Proveedor.findByIdAndUpdate({ _id: proveedor._id }, { materiasPrimas: proveedor.materiasPrimas });
           return res.status(200).json(data);
         }
       }
     }
     else {
       proveedor.materiasPrimas.push({ cantidad, precio, materiaPrima: idMateriaPrima });
-      const data = await Proveedor.findByIdAndUpdate({ _id: idProveedor }, { materiasPrimas: proveedor.materiasPrimas });
+      const data = await Proveedor.findByIdAndUpdate({ _id: proveedor._id }, { materiasPrimas: proveedor.materiasPrimas });
       return res.status(200).json(data);
     }
   } catch (e) {
     console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
+}
+
+let getMateriaPrimaById = async (req, res, next) => {
+  const { token } = req.headers;
+  const { idMateriaPrima } = req.query;
+  try {
+    const user = await tokenServer.decode(token);
+    const proveedor = await Proveedor.findOne({ usuario: user._id, status: true });
+    const data = (await Proveedor.aggregate([
+      {
+        '$match': {
+          '_id': proveedor._id, 
+          'status': true
+        }
+      }, {
+        '$unwind': '$materiasPrimas'
+      }, {
+        '$match': {
+          'materiasPrimas.materiaPrima': new Types.ObjectId(idMateriaPrima), 
+          'status': true
+        }
+      }, {
+        '$lookup': {
+          'from': 'materiaPrima', 
+          'localField': 'materiasPrimas.materiaPrima', 
+          'foreignField': '_id', 
+          'as': 'materiaPrima'
+        }
+      }, {
+        '$project': {
+          'materiaPrima': '$materiasPrimas.materiaPrima', 
+          'nombre': {
+            '$first': '$materiaPrima.nombre'
+          }, 
+          'cantidad': '$materiasPrimas.cantidad', 
+          'precio': '$materiasPrimas.precio'
+        }
+      }
+    ])).find(c => c.materiaPrima.toString() === idMateriaPrima)
+    return res.status(200).json(data);
+  } catch (e) {
+    console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
+}
+
+let updateMateriaPrima = async (req, res, next) => {
+  const { token } = req.headers;
+  const { idMateriaPrima, precio } = req.body;
+  try {
+    const user = await tokenServer.decode(token);
+    const proveedor = await Proveedor.findOne({ usuario: user._id, status: true });
+    if (!proveedor) {
+      return res.status(404).send({
+        message: 'No se encontró el almacén'
+      })
+    }
+    for (let i = 0; i < proveedor.materiasPrimas.length; i++) {
+      if (proveedor.materiasPrimas[i].materiaPrima.toString() === idMateriaPrima && proveedor.materiasPrimas[i].status) {
+        proveedor.materiasPrimas[i].precio = precio;
+        const data = await Proveedor.findByIdAndUpdate({ _id: proveedor._id }, { materiasPrimas: proveedor.materiasPrimas });
+        return res.status(200).json(data);
+      }
+      else if (proveedor.materiasPrimas[i].materiaPrima.toString() !== idMateriaPrima && proveedor.materiasPrimas[i].status && (i === proveedor.materiasPrimas.length - 1)) {
+        return res.status(404).send({
+          message: 'No se encontró la materia prima'
+        })
+      }
+    }
+  } catch (e) {
+    console.log(e)
+    res.status(500).send({
+      message: "Error en el proceso"
+    })
+  }
+}
+
+let removeMateriaPrima = async (req, res, next) => {
+  const { token } = req.headers;
+  const { idMateriaPrima}= req.body;
+  try {
+    const user = await tokenServer.decode(token);
+    const proveedor = await Proveedor.findOne({ usuario: user._id, status: true });
+    for (let i = 0; i < proveedor.materiasPrimas.length; i++) {
+      if (proveedor.materiasPrimas[i].materiaPrima.toString() === idMateriaPrima && proveedor.materiasPrimas[i].status) {
+        proveedor.materiasPrimas[i].status = false;
+        const data = await Proveedor.findByIdAndUpdate({ _id: proveedor._id }, { materiasPrimas: proveedor.materiasPrimas });
+        return res.status(200).json(data);
+      }
+    }
+  } catch (e) {
     res.status(500).send({
       message: "Error en el proceso"
     })
@@ -386,6 +485,7 @@ let getMateriasPrimasPaginate = async (req, res, next) => {
           'nombre': {
             '$first': '$materiaPrima.nombre'
           },
+          'materiaPrima': {'$first':'$materiaPrima._id'},
           'descripcion': {
             '$first': '$materiaPrima.descripcion'
           },
@@ -408,6 +508,7 @@ let getMateriasPrimasPaginate = async (req, res, next) => {
       }, {
         '$project': {
           'nombre': '$nombre',
+          'materiaPrima': '$materiaPrima',
           'descripcion': '$descripcion',
           'foto': '$foto',
           'cantidad': '$cantidad',
@@ -571,6 +672,7 @@ let remove = async (req, res, next) => {
 export default {
   add,
   addMateriaPrima,
+  getMateriaPrimaById,
   getAll,
   getAllPaginate,
   getMateriasPrimasById,
@@ -579,5 +681,7 @@ export default {
   getOrdenesPaginate,
   getById,
   update,
-  remove
+  updateMateriaPrima,
+  remove,
+  removeMateriaPrima
 }
