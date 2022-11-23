@@ -131,11 +131,55 @@ let getMateriasPrimasById = async (req, res, next) => {
             }, {
                 '$unwind': '$materiasPrimas'
             }, {
+                '$lookup': {
+                    'from': 'materiaPrima',
+                    'localField': 'materiasPrimas.materiaPrima',
+                    'foreignField': '_id',
+                    'as': 'materiaPrima'
+                }
+            }, {
                 '$project': {
                     'cantidad': '$materiasPrimas.cantidad',
                     'precio': '$materiasPrimas.precio',
-                    'materiaPrima': '$materiasPrimas.materiaPrima'
+                    'materiaPrima': {
+                        '$first': '$materiaPrima._id'
+                    },
+                    'nombre': {
+                        '$first': '$materiaPrima.nombre'
+                    },
+                    'descripcion': {
+                        '$first': '$materiaPrima.descripcion'
+                    },
+                    'foto': {
+                        '$first': '$materiaPrima.foto'
+                    },
+                    'categoria': {
+                        '$first': '$materiaPrima.categoriaMateriaPrima'
+                    }
                 }
+            }, {
+                '$lookup': {
+                    'from': 'categoriaMateriaPrima',
+                    'localField': 'categoria',
+                    'foreignField': '_id',
+                    'as': 'categoria'
+                }
+            }, {
+                '$project': {
+                    'cantidad': '$cantidad',
+                    'precio': '$precio',
+                    'materiaPrima': '$materiaPrima',
+                    'nombre': '$nombre',
+                    'descripcion': '$descripcion',
+                    'foto': '$foto',
+                    'categoria': {
+                        '$first': '$categoria.nombre'
+                    }
+                }
+            }, {
+                '$limit': Number(limit)
+            }, {
+                '$skip': (page - 1) * limit
             }
         ]);
         return res.status(200).json(data);
@@ -157,12 +201,6 @@ let getMateriasPrimasByIdPaginate = async (req, res, next) => {
                 }
             }, {
                 '$unwind': '$materiasPrimas'
-            }, {
-                '$project': {
-                    'cantidad': '$materiasPrimas.cantidad',
-                    'precio': '$materiasPrimas.precio',
-                    'materiaPrima': '$materiasPrimas.materiaPrima'
-                }
             }
         ]);
         const data = await Orden.aggregate([
@@ -174,18 +212,56 @@ let getMateriasPrimasByIdPaginate = async (req, res, next) => {
             }, {
                 '$unwind': '$materiasPrimas'
             }, {
+                '$lookup': {
+                    'from': 'materiaPrima',
+                    'localField': 'materiasPrimas.materiaPrima',
+                    'foreignField': '_id',
+                    'as': 'materiaPrima'
+                }
+            }, {
                 '$project': {
                     'cantidad': '$materiasPrimas.cantidad',
                     'precio': '$materiasPrimas.precio',
-                    'materiaPrima': '$materiasPrimas.materiaPrima'
+                    'estadoOrden': '$estadoOrden',
+                    'materiaPrima': {
+                        '$first': '$materiaPrima._id'
+                    },
+                    'nombre': {
+                        '$first': '$materiaPrima.nombre'
+                    },
+                    'descripcion': {
+                        '$first': '$materiaPrima.descripcion'
+                    },
+                    'foto': {
+                        '$first': '$materiaPrima.foto'
+                    },
+                    'categoria': {
+                        '$first': '$materiaPrima.categoriaMateriaPrima'
+                    }
                 }
             }, {
-                '$limit': Number(limit)
+                '$lookup': {
+                    'from': 'categoriaMateriaPrima',
+                    'localField': 'categoria',
+                    'foreignField': '_id',
+                    'as': 'categoria'
+                }
             }, {
-                '$skip': (page - 1) * limit
+                '$project': {
+                    'cantidad': '$cantidad',
+                    'precio': '$precio',
+                    'estadoOrden': '$estadoOrden',
+                    'materiaPrima': '$materiaPrima',
+                    'nombre': '$nombre',
+                    'descripcion': '$descripcion',
+                    'foto': '$foto',
+                    'categoria': {
+                        '$first': '$categoria.nombre'
+                    }
+                }
             }
         ]);
-        return res.status(200).json({ results: data, total: total.length, totalPages: Math.ceil(total.length / limit) });
+        return res.status(200).json({ results: data, estadoOrden: total[0].estadoOrden, total: total.length, totalPages: Math.ceil(total.length / limit) });
     } catch (e) {
         res.status(500).send({
             message: "Error en el proceso"
@@ -221,11 +297,11 @@ let aceptar = async (req, res, next) => {
     const { id, fechaEntrega } = req.body
     try {
         const orden = await Orden.findOne({ _id: id, status: true });
-        // if (orden.estadoOrden === 3) {
-        //     return res.status(500).send({
-        //         message: "Esta orden ya ha sido aceptada"
-        //     })
-        // }
+        if (orden.estadoOrden === 3) {
+            return res.status(500).send({
+                message: "Esta orden ya ha sido aceptada"
+            })
+        }
         const almacenes = await AlmacenMp.aggregate([
             {
                 '$match': {
@@ -233,7 +309,10 @@ let aceptar = async (req, res, next) => {
                 }
             },
             {
-                '$unwind': '$materiasPrimas'
+                '$unwind': {
+                    path: '$materiasPrimas',
+                    preserveNullAndEmptyArrays: true
+                }
             }, {
                 '$group': {
                     '_id': '$_id',
@@ -250,6 +329,7 @@ let aceptar = async (req, res, next) => {
             }
         ]);
         let j = 0;
+        console.log(almacenes)
         let error = false;
         for (let i = 0; i < almacenes.length; i++) {
             let total = almacenes[i].total;
@@ -278,6 +358,7 @@ let aceptar = async (req, res, next) => {
             if (ordenes.length !== 0) {
                 total += ordenes[0].total;
             }
+
             if (j < orden.materiasPrimas.length) {
                 for (let k = j; k < orden.materiasPrimas.length; k++) {
                     total += orden.materiasPrimas[j].cantidad;
